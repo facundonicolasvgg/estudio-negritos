@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 from matplotlib.collections import PatchCollection
 from matplotlib.lines import Line2D
+import matplotlib.patheffects as pe
+from adjustText import adjust_text
 
 WORLD = "/tmp/world.geojson"
 
@@ -94,42 +96,45 @@ def main():
                          linewidths=0.7, zorder=1)
     ax.add_collection(pc)
 
-    # marcadores numerados
+    # marcadores (punto de color por region) + nombre directamente sobre el mapa
+    texts = []
     for num, name, country, lon, lat, region in CULTURES:
         color = REGION_COLORS[region]
-        ax.plot(lon, lat, "o", color=color, markersize=15,
-                markeredgecolor="white", markeredgewidth=1.2, zorder=4)
-        ax.text(lon, lat, str(num), color="white", fontsize=8.5,
-                fontweight="bold", ha="center", va="center", zorder=5)
+        ax.plot(lon, lat, "o", color=color, markersize=9,
+                markeredgecolor="white", markeredgewidth=1.0, zorder=4)
+        t = ax.text(lon, lat, name, color=color, fontsize=8.4,
+                    fontweight="bold", ha="center", va="center", zorder=6,
+                    path_effects=[pe.withStroke(linewidth=2.6, foreground="white")])
+        texts.append(t)
+
+    # reubica los nombres para que NO se solapen, con lineas guia finas
+    adjust_text(
+        texts, ax=ax,
+        expand=(1.25, 1.6),
+        force_text=(0.5, 0.8),
+        arrowprops=dict(arrowstyle="-", color="#555555", lw=0.6, alpha=0.8),
+    )
 
     ax.set_xlim(-22, 54)
-    ax.set_ylim(-12, 26)   # foco en la franja subsahariana de las culturas
+    ax.set_ylim(-14, 27)
     ax.set_aspect(1.18)
     ax.axis("off")
     ax.set_title("ARTE DE LOS PUEBLOS PRIMITIVOS - Culturas africanas del temario",
                  fontsize=17, fontweight="bold", pad=14)
 
-    # leyenda lateral agrupada por region
-    x0 = 1.005
-    y = 0.985
-    fig.text(x0, y, "LEYENDA", fontsize=13, fontweight="bold",
-             transform=ax.transAxes)
-    y -= 0.045
-    for region in ("O", "C", "E"):
-        fig.text(x0, y, REGION_NAMES[region], fontsize=11, fontweight="bold",
-                 color=REGION_COLORS[region], transform=ax.transAxes)
-        y -= 0.034
-        for num, name, country, lon, lat, r in CULTURES:
-            if r != region:
-                continue
-            fig.text(x0 + 0.01, y, f"{num}. {name}  -  {country}",
-                     fontsize=9.0, transform=ax.transAxes, va="top")
-            y -= 0.0285
-        y -= 0.012
+    # leyenda compacta: solo clave de colores por region (esquina inferior izq.)
+    handles = [Line2D([0], [0], marker="o", color="none",
+                       markerfacecolor=REGION_COLORS[r], markersize=11,
+                       markeredgecolor="white", label=REGION_NAMES[r])
+               for r in ("O", "C", "E")]
+    leg = ax.legend(handles=handles, loc="lower left", fontsize=11,
+                    title="REGIONES", title_fontsize=12, frameon=True,
+                    framealpha=0.95, borderpad=1.0, labelspacing=0.8)
+    leg.get_frame().set_edgecolor("#999999")
 
-    plt.subplots_adjust(left=0.01, right=0.70, top=0.93, bottom=0.02)
+    plt.subplots_adjust(left=0.02, right=0.98, top=0.93, bottom=0.02)
     out = "/projects/sandbox/estudio-negritos/mapa_culturas_africa.png"
-    fig.savefig(out, dpi=160, bbox_inches="tight", facecolor="white")
+    fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
     print("guardado:", out)
 
 if __name__ == "__main__":
