@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Genera un mapa de Africa con las culturas del temario ubicadas geograficamente,
-coloreando los territorios (paises actuales) y mostrando su nombre."""
+"""Genera un mapa de Africa con TODOS los territorios (paises actuales) coloreados
+cada uno de un color distinto y etiquetados con su nombre actual en espanol.
+Encima se situan las culturas del temario."""
 import json
 import os
 import colorsys
@@ -14,7 +15,7 @@ from matplotlib.lines import Line2D
 import matplotlib.patheffects as pe
 from adjustText import adjust_text
 
-# GeoJSON de paises (propiedad "name" con nombres tipo "Ivory Coast").
+# GeoJSON de paises (propiedad "name" con nombres en ingles tipo "Ivory Coast").
 WORLD = os.path.join(os.path.dirname(__file__), "world.geojson")
 WORLD_URL = ("https://raw.githubusercontent.com/johan/world.geo.json/"
              "master/countries.geo.json")
@@ -25,44 +26,62 @@ def ensure_world():
         print("descargando geojson de paises...")
         urllib.request.urlretrieve(WORLD_URL, WORLD)
 
-AFRICA = {
-    "Algeria","Angola","Burundi","Benin","Burkina Faso","Botswana",
-    "Central African Republic","Ivory Coast","Cameroon",
-    "Democratic Republic of the Congo","Republic of the Congo","Djibouti",
-    "Egypt","Eritrea","Ethiopia","Gabon","Ghana","Guinea","Gambia",
-    "Guinea Bissau","Guinea-Bissau","Equatorial Guinea","Kenya","Liberia","Libya",
-    "Lesotho","Morocco","Madagascar","Mali","Mozambique","Mauritania","Malawi",
-    "Namibia","Niger","Nigeria","Rwanda","Western Sahara","Sudan","South Sudan",
-    "Senegal","Sierra Leone","Somalia","Somaliland","Swaziland","Chad","Togo",
-    "Tunisia","Tanzania","Uganda","South Africa","Zambia","Zimbabwe",
+# TODOS los paises africanos: nombre en geojson (ingles) -> nombre ACTUAL en espanol.
+AFRICA_NAMES = {
+    "Algeria": "ARGELIA",
+    "Angola": "ANGOLA",
+    "Benin": "BENIN",
+    "Botswana": "BOTSUANA",
+    "Burkina Faso": "BURKINA FASO",
+    "Burundi": "BURUNDI",
+    "Cameroon": "CAMERUN",
+    "Central African Republic": "REP.\nCENTROAFRICANA",
+    "Chad": "CHAD",
+    "Democratic Republic of the Congo": "RD DEL CONGO",
+    "Djibouti": "YIBUTI",
+    "Egypt": "EGIPTO",
+    "Equatorial Guinea": "GUINEA ECUAT.",
+    "Eritrea": "ERITREA",
+    "Ethiopia": "ETIOPIA",
+    "Gabon": "GABON",
+    "Gambia": "GAMBIA",
+    "Ghana": "GHANA",
+    "Guinea": "GUINEA",
+    "Guinea Bissau": "GUINEA-BISAU",
+    "Ivory Coast": "COSTA DE MARFIL",
+    "Kenya": "KENIA",
+    "Lesotho": "LESOTO",
+    "Liberia": "LIBERIA",
+    "Libya": "LIBIA",
+    "Madagascar": "MADAGASCAR",
+    "Malawi": "MALAUI",
+    "Mali": "MALI",
+    "Mauritania": "MAURITANIA",
+    "Morocco": "MARRUECOS",
+    "Mozambique": "MOZAMBIQUE",
+    "Namibia": "NAMIBIA",
+    "Niger": "NIGER",
+    "Nigeria": "NIGERIA",
+    "Republic of the Congo": "R. DEL CONGO",
+    "Rwanda": "RUANDA",
+    "Senegal": "SENEGAL",
+    "Sierra Leone": "SIERRA LEONA",
+    "Somalia": "SOMALIA",
+    "Somaliland": "SOMALILANDIA",
+    "South Africa": "SUDAFRICA",
+    "South Sudan": "SUDAN DEL SUR",
+    "Sudan": "SUDAN",
+    "Swaziland": "ESUATINI",
+    "Togo": "TOGO",
+    "Tunisia": "TUNEZ",
+    "Uganda": "UGANDA",
+    "United Republic of Tanzania": "TANZANIA",
+    "Western Sahara": "SAHARA OCC.",
+    "Zambia": "ZAMBIA",
+    "Zimbabwe": "ZIMBABUE",
 }
 
-# Territorios (paises actuales) donde se encuentran las culturas del temario.
-# geojson_name: (region, nombre_a_mostrar)
-# regiones: O=occidental, C=central, E=oriental/austral
-RELEVANT_COUNTRIES = {
-    "Mali": ("O", "MALI"),
-    "Ivory Coast": ("O", "COSTA DE MARFIL"),
-    "Burkina Faso": ("O", "BURKINA FASO"),
-    "Guinea Bissau": ("O", "GUINEA-BISAU"),
-    "Guinea-Bissau": ("O", "GUINEA-BISAU"),
-    "Sierra Leone": ("O", "SIERRA LEONA"),
-    "Liberia": ("O", "LIBERIA"),
-    "Ghana": ("O", "GHANA"),
-    "Benin": ("O", "BENIN"),
-    "Togo": ("O", "TOGO"),
-    "Nigeria": ("O", "NIGERIA"),
-    "Cameroon": ("C", "CAMERUN"),
-    "Equatorial Guinea": ("C", "GUINEA ECUAT."),
-    "Gabon": ("C", "GABON"),
-    "Republic of the Congo": ("C", "R. DEL CONGO"),
-    "Democratic Republic of the Congo": ("C", "RD DEL CONGO"),
-    "Angola": ("C", "ANGOLA"),
-    "Ethiopia": ("E", "ETIOPIA"),
-    "Chad": ("E", "CHAD"),
-}
-
-# (numero, nombre, pais, lon, lat, region)
+# (numero, nombre, pais, lon, lat, region)  region: O=occidental C=central E=oriental/austral
 CULTURES = [
     # --- Africa occidental ---
     (1,  "Bambara / Bamana", "Mali", -6.5, 13.2, "O"),
@@ -102,8 +121,7 @@ CULTURES = [
     (33, "Sara / Saracat", "Chad", 18.4, 9.2, "E"),
 ]
 
-REGION_COLORS = {"O": "#b8470e", "C": "#0f6b35", "E": "#5b2470"}   # puntos / nombres cultura
-NEUTRAL_FILL = "#f1ead8"                                            # resto de Africa
+REGION_COLORS = {"O": "#7a1f00", "C": "#063d1e", "E": "#3a0f4a"}   # punto/nombre de cultura
 REGION_NAMES = {
     "O": "Africa OCCIDENTAL",
     "C": "Africa CENTRAL",
@@ -111,29 +129,43 @@ REGION_NAMES = {
 }
 
 def make_palette(n):
-    """Genera n colores pastel bien diferenciados (tonos repartidos por el circulo)."""
-    cols = []
-    # alternamos el orden de los tonos para que paises vecinos no queden parecidos
-    order = []
-    step = max(1, n // 3)
+    """n colores bien diferenciados; se intercalan los tonos para que paises
+    contiguos en la lista no salgan parecidos."""
+    step = max(1, round(n / 3.0))
+    order, seen = [], set()
     for start in range(step):
-        order.extend(range(start, n, step))
+        i = start
+        while i < n:
+            if i not in seen:
+                order.append(i); seen.add(i)
+            i += step
+    cols = []
     for rank, i in enumerate(order):
-        h = i / n
-        # variamos un poco luminosidad/saturacion segun la posicion para mas contraste
-        light = 0.80 if rank % 2 == 0 else 0.72
-        sat = 0.55 if rank % 2 == 0 else 0.62
+        h = i / float(n)
+        light = 0.78 if rank % 2 == 0 else 0.70
+        sat = 0.58 if rank % 3 else 0.68
         r, g, b = colorsys.hls_to_rgb(h, light, sat)
         cols.append("#%02x%02x%02x" % (int(r * 255), int(g * 255), int(b * 255)))
     return cols
 
-# Cada TERRITORIO (pais actual) recibe un color de relleno distinto.
-TERRITORIES = []
-for _k, (_region, _label) in RELEVANT_COUNTRIES.items():
-    if _label not in TERRITORIES:
-        TERRITORIES.append(_label)
-_palette = make_palette(len(TERRITORIES))
-COUNTRY_FILL = {label: _palette[i] for i, label in enumerate(TERRITORIES)}
+# un color distinto por cada pais africano
+_afr_sorted = sorted(AFRICA_NAMES.keys())
+_palette = make_palette(len(_afr_sorted))
+COUNTRY_FILL = {name: _palette[i] for i, name in enumerate(_afr_sorted)}
+
+# ajustes finos de posicion de la etiqueta del pais (dx, dy en grados)
+LABEL_NUDGE = {
+    "Gambia": (-2.6, 0.0),
+    "Equatorial Guinea": (-1.2, -1.2),
+    "Guinea Bissau": (-1.6, 0.0),
+    "Togo": (-0.2, -1.0),
+    "Benin": (0.2, -1.0),
+    "Rwanda": (-0.8, 0.1),
+    "Burundi": (-0.8, -0.4),
+    "Lesotho": (0.4, -0.3),
+    "Swaziland": (1.8, -0.2),
+    "Djibouti": (1.8, 0.2),
+}
 
 def iter_polys(geom):
     if geom["type"] == "Polygon":
@@ -177,83 +209,68 @@ def largest_ring(geom):
 def main():
     ensure_world()
     world = json.load(open(WORLD))
-    fig, ax = plt.subplots(figsize=(17, 12))
+    fig, ax = plt.subplots(figsize=(18, 13))
 
-    # --- relleno de paises: territorios relevantes coloreados por region ---
+    # --- relleno: CADA pais africano con su propio color ---
     for feat in world["features"]:
         name = feat["properties"].get("name", "")
-        if name not in AFRICA:
+        if name not in AFRICA_NAMES:
             continue
-        rel = RELEVANT_COUNTRIES.get(name)
-        if rel:
-            region, label = rel
-            face = COUNTRY_FILL[label]
-            edge = "#4a4a4a"
-            lw = 0.9
-            z = 2
-        else:
-            face, edge, lw, z = NEUTRAL_FILL, "#9a9a9a", 0.6, 1
+        face = COUNTRY_FILL[name]
         polys = [MplPolygon(r, closed=True) for r in iter_polys(feat["geometry"])]
-        pc = PatchCollection(polys, facecolor=face, edgecolor=edge,
-                             linewidths=lw, zorder=z)
+        pc = PatchCollection(polys, facecolor=face, edgecolor="#3a3a3a",
+                             linewidths=0.8, zorder=2)
         ax.add_collection(pc)
 
-    # --- nombre del territorio (pais actual) sobre el mapa, como rotulo de fondo ---
+    # --- etiqueta con el NOMBRE ACTUAL (espanol) de cada pais ---
     for feat in world["features"]:
         name = feat["properties"].get("name", "")
-        rel = RELEVANT_COUNTRIES.get(name)
-        if not rel:
+        if name not in AFRICA_NAMES:
             continue
-        region, label = rel
+        label = AFRICA_NAMES[name]
         cx, cy = ring_centroid(largest_ring(feat["geometry"]))
-        ax.text(cx, cy, label, color="#2b2b2b", fontsize=8.0, alpha=0.6,
-                fontstyle="italic", fontweight="bold", ha="center", va="center",
-                zorder=3,
-                path_effects=[pe.withStroke(linewidth=2.0, foreground="white")])
+        dx, dy = LABEL_NUDGE.get(name, (0.0, 0.0))
+        ax.text(cx + dx, cy + dy, label, color="#1c1c1c", fontsize=7.6,
+                fontweight="bold", ha="center", va="center", zorder=4,
+                linespacing=0.9,
+                path_effects=[pe.withStroke(linewidth=2.2, foreground="white")])
 
-    # --- marcadores (punto de color por region) + nombre de la cultura ---
+    # --- culturas del temario: punto de color por region + nombre ---
     texts = []
     for num, name, country, lon, lat, region in CULTURES:
         color = REGION_COLORS[region]
-        ax.plot(lon, lat, "o", color=color, markersize=8.5,
-                markeredgecolor="white", markeredgewidth=1.0, zorder=5)
-        t = ax.text(lon, lat, name, color=color, fontsize=8.4,
-                    fontweight="bold", ha="center", va="center", zorder=7,
-                    path_effects=[pe.withStroke(linewidth=2.6, foreground="white")])
+        ax.plot(lon, lat, "o", color=color, markersize=8.0,
+                markeredgecolor="white", markeredgewidth=1.0, zorder=6)
+        t = ax.text(lon, lat, name, color=color, fontsize=8.0,
+                    fontweight="bold", ha="center", va="center", zorder=8,
+                    path_effects=[pe.withStroke(linewidth=2.4, foreground="white")])
         texts.append(t)
 
-    # reubica los nombres de cultura para que NO se solapen, con lineas guia finas
     adjust_text(
         texts, ax=ax,
         expand=(1.25, 1.6),
         force_text=(0.5, 0.8),
-        arrowprops=dict(arrowstyle="-", color="#555555", lw=0.6, alpha=0.8),
+        arrowprops=dict(arrowstyle="-", color="#444444", lw=0.6, alpha=0.85),
     )
 
     ax.set_xlim(-22, 54)
-    ax.set_ylim(-14, 27)
-    ax.set_aspect(1.18)
+    ax.set_ylim(-37, 39)
+    ax.set_aspect(1.12)
     ax.axis("off")
-    ax.set_title("ARTE DE LOS PUEBLOS PRIMITIVOS - Culturas africanas y territorios actuales",
-                 fontsize=17, fontweight="bold", pad=14)
+    ax.set_title("AFRICA - territorios actuales (cada pais un color) y culturas del temario",
+                 fontsize=18, fontweight="bold", pad=14)
 
-    # leyenda: el color del PUNTO/nombre indica la region; cada territorio tiene su color
     handles = [Line2D([0], [0], marker="o", color="none",
                       markerfacecolor=REGION_COLORS[r], markersize=12,
-                      markeredgecolor="white",
-                      label=REGION_NAMES[r])
+                      markeredgecolor="white", label=REGION_NAMES[r])
                for r in ("O", "C", "E")]
-    handles.append(Line2D([0], [0], marker="s", color="none",
-                          markerfacecolor="#e9e9e9", markersize=14,
-                          markeredgecolor="#4a4a4a",
-                          label="cada territorio coloreado = pais actual"))
-    leg = ax.legend(handles=handles, loc="lower left", fontsize=10.5,
-                    title="COLOR DEL PUNTO = REGION  |  RELLENO = TERRITORIO",
-                    title_fontsize=10.5, frameon=True,
-                    framealpha=0.95, borderpad=1.0, labelspacing=0.8)
+    leg = ax.legend(handles=handles, loc="lower left", fontsize=11,
+                    title="COLOR DEL PUNTO = REGION de la cultura",
+                    title_fontsize=11, frameon=True,
+                    framealpha=0.95, borderpad=1.0, labelspacing=0.7)
     leg.get_frame().set_edgecolor("#999999")
 
-    plt.subplots_adjust(left=0.02, right=0.98, top=0.93, bottom=0.02)
+    plt.subplots_adjust(left=0.02, right=0.98, top=0.94, bottom=0.02)
     out = "/projects/sandbox/estudio-negritos/mapa_culturas_africa.png"
     fig.savefig(out, dpi=170, bbox_inches="tight", facecolor="white")
     print("guardado:", out)
