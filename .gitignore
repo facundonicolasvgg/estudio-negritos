@@ -1,0 +1,5 @@
+# Datos descargados / cache del generador de mapas
+scripts/world.geojson
+
+# Texto extraido de los PDFs (artefactos de trabajo)
+.extract/
